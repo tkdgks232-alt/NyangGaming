@@ -1,10 +1,10 @@
-# 냥게이밍 업데이트 배포 안내
+﻿# 냥게이밍 업데이트 배포 안내
 
 ## 현재 완료 상태
 
 Velopack 1.2.158 기반 설치·업데이트 기능과 GitHub Actions workflow를 구현했습니다.
 로컬 테스트 설치본에서 1.0.0 → 1.0.1 감지/대화상자/다운로드/검증/종료/교체/재실행을 확인했습니다.
-아직 GitHub 저장소가 없으므로 실제 GitHub Release 게시와 Actions 실행은 미완료입니다.
+GitHub 저장소: https://github.com/tkdgks232-alt/NyangGaming . 첫 Release의 Actions 빌드·테스트·공개와 인증 없는 피드 조회·패키지 다운로드 검증을 완료했습니다.
 GitHub 배포처가 설정되지 않은 빌드는 설정에 그 상태를 표시하며 임의 URL에 요청하지 않습니다.
 
 ## 처음 한 번
@@ -84,7 +84,7 @@ Releases 폴더의 Setup.exe, full.nupkg, releases.win.json 및 보조 메타데
 - 업데이트 정책/오류/SQLite rollback 테스트 16개 통과
 - 업데이트 UI 두 테마/두 창 폭/확대 100·150%와 닫기 총 60개 검증 통과
 - 기존 채팅 화면 검증 포함. 실제 친구에게 테스트 메시지를 보내지 않음
-- 실제 GitHub 조회·Actions·Release 업로드는 저장소 연결 이후 별도로 확인해야 함
+- 실제 GitHub Actions 빌드·업로드·공개 완료, Velopack GithubSource로 공개 피드/노트/패키지 다운로드 검증 완료
 - 임의 전원 차단 등 모든 OS 장애를 재현한 것은 아님. 업데이트 적용은 Velopack의 파일 교체/복구 흐름 사용
 
 참고: https://docs.velopack.io/integrating/overview
