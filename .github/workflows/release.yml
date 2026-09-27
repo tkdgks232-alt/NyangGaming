@@ -1,5 +1,11 @@
 name: Build and publish Nyang Gaming
 on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to build'
+        required: true
+        default: 'v1.0.0'
   push:
     tags: ['v*']
 permissions:
@@ -10,8 +16,12 @@ concurrency:
 jobs:
   release:
     runs-on: windows-2022
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -22,7 +32,7 @@ jobs:
         shell: pwsh
         run: |
           $v=(Get-Content version.json -Raw | ConvertFrom-Json).version
-          if($env:GITHUB_REF_NAME -ne "v$v"){throw 'Tag and version.json differ'}
+          if($env:RELEASE_TAG -ne "v$v"){throw 'Tag and version.json differ'}
           if(!(Test-Path "release-notes/$v.md")){throw 'Missing release notes'}
       - name: Restore pinned dependencies
         shell: pwsh
