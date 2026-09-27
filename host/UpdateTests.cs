@@ -1,0 +1,22 @@
+﻿using System;using System.IO;using System.Text;using System.Collections.Generic;using System.Threading;using System.Threading.Tasks;using Velopack;
+internal static class UpdateTests {
+ sealed class Fake:IAppUpdateBackend {
+  internal int checks,downloads,applies;internal bool failCheck,failDownload,failApply,installed=true,current;internal VelopackAsset pending;
+  public bool Installed {get{return installed;}}public VelopackAsset Pending{get{return pending;}}
+  static SemanticVersion NextVersion(){var v=new Version(UpdateBuild.Version.Split('-')[0]);return SemanticVersion.Parse(v.Major+"."+v.Minor+"."+(v.Build+1));}
+  public Task<UpdateInfo> Check(){checks++;if(failCheck)throw new IOException();return Task.FromResult(current?null:new UpdateInfo(new VelopackAsset{Version=NextVersion(),NotesMarkdown="친구 채팅 개선\n<script>untrusted</script>"},false,null,null));}
+  public Task Download(UpdateInfo info,Action<int> progress,CancellationToken token){downloads++;progress(68);if(failDownload)throw new InvalidDataException();progress(100);pending=info.TargetFullRelease;return Task.FromResult(0);}
+  public void Apply(VelopackAsset asset){if(failApply)throw new IOException();applies++;}
+ }
+ internal static async Task Run(string output){var log=new List<string>();string root=Path.Combine(Path.GetDirectoryName(Path.GetFullPath(output)),"update-tests-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);Action<bool,string> check=(ok,name)=>{if(!ok)throw new Exception(name);log.Add("PASS "+name);};try{
+  check(AppUpdateService.ValidRepository("https://github.com/example/NyangGaming")&&!AppUpdateService.ValidRepository("http://github.com/example/app")&&!AppUpdateService.ValidRepository("https://github.com.evil/example/app")&&!AppUpdateService.ValidRepository("https://github.com/u/r?token=secret"),"exact public GitHub repository validation");
+  var f=new Fake();using(var s=new AppUpdateService(root,false,f)){s.SetAutomatic(false);await s.Startup();check(f.checks==0,"automatic OFF sends no request");await s.Check(true);check(f.checks==1&&s.View.state=="available"&&s.View.dialog,"manual check works with automatic OFF");check(f.downloads==0&&f.applies==0,"check never downloads or applies");s.Dismiss();check(!s.View.dialog&&f.applies==0,"later keeps current app");await s.Download();check(s.View.state=="ready"&&s.View.progress==100&&f.applies==0,"download verified before explicit restart");}
+  using(var s=new AppUpdateService(root,false,f)){check(!s.View.automatic&&s.View.state=="ready"&&f.applies==0,"preferences and pending update survive restart without auto apply");f.failApply=true;check(!s.BeginApply()&&s.View.state=="ready"&&!s.View.busy,"apply launch failure keeps current app usable");f.failApply=false;check(s.BeginApply()&&f.applies==1,"explicit apply only");}
+  f=new Fake{failCheck=true};using(var s=new AppUpdateService(root,false,f)){await s.Check(true);check(s.View.state=="error"&&!s.View.busy,"GitHub failure does not break application");}
+  f=new Fake{failDownload=true};using(var s=new AppUpdateService(root,false,f)){await s.Check(true);await s.Download();check(s.View.state=="downloadError"&&f.applies==0&&!s.BeginApply(),"corrupt or interrupted download cannot apply");f.failDownload=false;await s.Download();check(s.View.state=="ready","download retry succeeds");}
+  f=new Fake{current=true};using(var s=new AppUpdateService(root,false,f)){await s.Check(true);check(s.View.state=="current"&&s.View.message.Contains(UpdateBuild.Version),"latest version message");}
+  f=new Fake{installed=false};using(var s=new AppUpdateService(root,false,f)){await s.Check(true);check(s.View.state=="portable"&&f.checks==0,"ZIP build does not try to replace running files");}
+  using(var db=new LeagueRankStore(Path.Combine(root,"migration.sqlite"))){var identity=new LeagueIdentity{puuid="update-test",platform="KR"};var data=new LeagueData{ranks=new[]{new LeagueRank{queue="RANKED_SOLO_5x5",tier="GOLD",division="I",points=55}}};db.Append(identity,data,DateTime.UtcNow);bool failed=false;try{db.Migrate(2,delegate{throw new IOException("migration failure");});}catch{failed=true;}check(failed&&db.SchemaVersion==1&&db.Read(identity).Length==1,"failed migration rolls back and preserves existing rows");check(Directory.GetFiles(root,"*.bak").Length>=2,"versioned SQLite backups retained");}
+  log.Add("ALL PASS: "+log.Count);
+ }catch(Exception e){log.Add("FAIL "+e);}File.WriteAllLines(output,log,Encoding.UTF8);}
+}

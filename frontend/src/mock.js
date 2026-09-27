@@ -1,0 +1,2 @@
+// Presentation fixtures only. Never mixed into host telemetry, game state, or play-time totals.
+export const mock={genshin:{resin:160,maxResin:200,recovery:'5시간 20분',daily:3,dailyTotal:4,expeditions:5},eternal:{nickname:'Luna',tier:'DIAMOND IV',rp:5214,delta:31,winRate:18.4,average:3.2,matches:[{rank:2,character:'Aya',kills:7,assists:4,delta:31,minutes:22},{rank:1,character:'Hyejin',kills:9,assists:6,delta:54,minutes:24},{rank:6,character:'Aya',kills:2,assists:3,delta:-18,minutes:16}],trend:[5010,5090,5050,5120,5155,5183,5214]}};

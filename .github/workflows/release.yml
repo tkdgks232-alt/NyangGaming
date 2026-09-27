@@ -1,0 +1,54 @@
+name: Build and publish Nyang Gaming
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+concurrency:
+  group: nyang-release
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Validate version and tag
+        shell: pwsh
+        run: |
+          $v=(Get-Content version.json -Raw | ConvertFrom-Json).version
+          if($env:GITHUB_REF_NAME -ne "v$v"){throw 'Tag and version.json differ'}
+          if(!(Test-Path "release-notes/$v.md")){throw 'Missing release notes'}
+      - name: Restore pinned dependencies
+        shell: pwsh
+        run: |
+          ./Restore.ps1
+          dotnet tool install vpk --version 1.2.158 --tool-path .tools
+      - name: Build one host and frontend package
+        shell: pwsh
+        run: ./Package.ps1 -Repository "https://github.com/$env:GITHUB_REPOSITORY" -Vpk "$pwd/.tools/vpk.exe"
+      - name: Test update policy and SQLite migration
+        shell: pwsh
+        run: |
+          $result=Join-Path $pwd 'update-tests.txt'
+          $p=Start-Process ./dist/NyangGaming.exe -ArgumentList @('--update-selftest',('"'+$result+'"')) -Wait -PassThru
+          Get-Content $result
+          if(!(Select-String -Path $result -Pattern '^ALL PASS:')){throw 'Update tests failed'}
+      - name: Upload complete release before publishing
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $v=(Get-Content version.json -Raw | ConvertFrom-Json).version
+          $files=@(Get-ChildItem Releases -File | ForEach-Object FullName)
+          $arguments=@('release','create',"v$v",'--draft','--title',"Nyang Gaming v$v",'--notes-file',"release-notes/$v.md",'--verify-tag')
+          if($v.Contains('-')){$arguments+='--prerelease'}
+          & gh @arguments @files
+          if($LASTEXITCODE){throw 'Release upload failed; it was not published'}
+          gh release edit "v$v" --draft=false
+          if($LASTEXITCODE){throw 'Release publication failed; inspect draft'}

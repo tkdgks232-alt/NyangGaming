@@ -1,0 +1,16 @@
+PASS chat-settings.json
+PASS eternal-account.json
+PASS friends-config.json
+PASS friends-options.json
+PASS hoyo-session.dpapi
+PASS league-account.json
+PASS update-preferences.json
+PASS valorant-valking.json
+PASS Artwork\background.bin
+PASS theme
+PASS playtime
+PASS background
+PASS game path
+PASS profile name
+PASS SQLite rows and schema migration
+ALL PASS

@@ -1,0 +1,1 @@
+detected=available version=1.0.1 downloaded=downloadError progress=99

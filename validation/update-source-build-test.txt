@@ -1,0 +1,17 @@
+﻿PASS exact public GitHub repository validation
+PASS automatic OFF sends no request
+PASS manual check works with automatic OFF
+PASS check never downloads or applies
+PASS later keeps current app
+PASS download verified before explicit restart
+PASS preferences and pending update survive restart without auto apply
+PASS apply launch failure keeps current app usable
+PASS explicit apply only
+PASS GitHub failure does not break application
+PASS corrupt or interrupted download cannot apply
+PASS download retry succeeds
+PASS latest version message
+PASS ZIP build does not try to replace running files
+PASS failed migration rolls back and preserves existing rows
+PASS versioned SQLite backups retained
+ALL PASS: 16
