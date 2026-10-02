@@ -12,7 +12,7 @@ using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
 static class Program {
-    internal static bool UpdateSmoke;internal static EventWaitHandle OpenRequest; internal static bool OpenFriends;internal static string PendingChatRoom;
+    internal static bool SocialVerify,UpdateSmoke;internal static EventWaitHandle OpenRequest; internal static bool OpenFriends;internal static string PendingChatRoom;
     internal static string ValkingSetupId; internal static string IplolSetupId; internal static string LeagueSetupId,LeagueSetupPlatform,DakSetupName;
     [STAThread] static void Main(string[] args){
         Velopack.VelopackApp.Build().SetAutoApplyOnStartup(false).SetAppUserModelId(UpdateBuild.Testing?"NyangGaming.UpdateTest":"NyangGaming.Messenger").Run();
@@ -27,6 +27,8 @@ static class Program {
         if(args.Length==2&&args[0]=="--notification-test"){MessengerTests.NotificationCheck(args[1]).GetAwaiter().GetResult();return;}
         if(args.Length==3&&args[0]=="--provider-selftest"){ProviderPolicyTests.Run(args[1],args[2]).GetAwaiter().GetResult();return;}
         if(args.Length==3&&args[0]=="--hippy-check"){ProviderPolicyTests.Live(args[1],args[2]).GetAwaiter().GetResult();return;}
+        if(args.Length==3&&args[0]=="--social-live"){SocialTests.Live(args[1],args[2]).GetAwaiter().GetResult();return;}
+        if(args.Length==2&&args[0]=="--social-selftest"){SocialTests.Run(args[1]);return;}
         if(args.Length==2&&args[0]=="--friends-selftest"){FriendsTests.Run(args[1]);return;}
         if(args.Length==2&&args[0]=="--hoyo-selftest"){HoyoTests.Run(args[1]).GetAwaiter().GetResult();return;}
         if(args.Length==2&&args[0]=="--riot-selftest"){RiotTests.Run(args[1]);return;}
@@ -40,7 +42,7 @@ static class Program {
         if(args.Length==3&&args[0]=="--league-setup"&&RiotApiProvider.ValidId(args[1])&&RiotApiProvider.ValidPlatform(args[2])){LeagueSetupId=args[1];LeagueSetupPlatform=args[2];}
         if(args.Length==2&&args[0]=="--ercraft-setup")DakSetupName=EternalCraftProvider.Normalize(args[1]);
         if(args.Length==2&&args[0]=="--iplol-setup"&&RiotApiProvider.ValidId(args[1]))IplolSetupId=args[1];
-        if(args.Length==2&&args[0]=="--chat-room")PendingChatRoom=ChatNotifications.Parse(args[1]);OpenFriends=Array.IndexOf(args,"--friends")>=0;bool verify=Array.IndexOf(args,"--verify")>=0,created;
+        if(args.Length==2&&args[0]=="--chat-room")PendingChatRoom=ChatNotifications.Parse(args[1]);OpenFriends=Array.IndexOf(args,"--friends")>=0;SocialVerify=Array.IndexOf(args,"--social-verify")>=0;bool verify=SocialVerify||Array.IndexOf(args,"--verify")>=0,created;
         using(var mutex=new Mutex(true,"Local\\KoruGaming_Next"+(verify?".Verify":UpdateBuild.Testing?".UpdateTest":""),out created))
         using(var open=new EventWaitHandle(false,EventResetMode.AutoReset,"Local\\NyangGaming.Open"+(verify?".Verify":UpdateBuild.Testing?".UpdateTest":""))){
             if(!created){if(PendingChatRoom!=null)ChatNotifications.Queue(PendingChatRoom);if(Array.IndexOf(args,"--tray")<0)open.Set();return;}
@@ -67,7 +69,7 @@ static class CharacterCheckRunner {
         }finally{s.Genshin.Dispose();}
     }
 }
-sealed class GamingWindow:Form {
+sealed partial class GamingWindow:Form {
     const string Origin="https://korugaming.example/index.html";
     readonly WebView2 web=new WebView2();readonly bool verify;readonly GamingService service;
     readonly JavaScriptSerializer json=new JavaScriptSerializer{MaxJsonLength=3000000};
@@ -81,6 +83,7 @@ sealed class GamingWindow:Form {
     void ChatNotification(string room,string title,string body){if(IsDisposed)return;try{ChatNotifications.Show(room,title.Length>60?title.Substring(0,60):title,body.Length>180?body.Substring(0,180)+"…":body);}catch{service.Friends.Chat.View.message="메시지는 도착했지만 Windows 알림을 표시하지 못했어요.";Send();}}
     internal GamingWindow(bool test,bool startInTray=false){
         verify=test;service=new GamingService(test||UpdateBuild.Testing);Text=service.Settings.brand;ApplyBrandIcon();
+        service.Friends.FriendArrived+=(id,name)=>{if(verify)return;try{ChatNotifications.ShowFriend(id,name);}catch{Toast(name+"님이 접속했어요.");}};
         service.Friends.Changed+=Send;service.Genshin.Changed+=Send;service.Eternal.Changed+=Send;service.Riot.League.Changed+=Send;service.Riot.Valorant.Changed+=Send;
         service.Friends.Chat.Changed+=Send;service.Friends.Chat.Navigate+=OpenChat;service.Friends.Chat.Notification+=ChatNotification;
         AutoScaleMode=AutoScaleMode.Dpi;ClientSize=new Size(1280,850);MinimumSize=new Size(560,480);StartPosition=FormStartPosition.CenterScreen;
@@ -89,7 +92,7 @@ sealed class GamingWindow:Form {
         Shown+=async delegate{if(startInTray&&!verify)HideToTray();await Initialize();};
         service.Updates.Changed+=UpdateChanged;
         FormClosing+=async delegate(object sender,FormClosingEventArgs e){if(!verify&&!quitting&&e.CloseReason==CloseReason.UserClosing){e.Cancel=true;HideToTray();return;}if(!verify&&quitting&&!shutdownReady&&e.CloseReason==CloseReason.UserClosing){e.Cancel=true;timer.Stop();await service.Friends.Offline();shutdownReady=true;Close();}};
-        timer.Tick+=async delegate{try{if(!verify&&Program.OpenRequest!=null&&Program.OpenRequest.WaitOne(0)){var requested=ChatNotifications.Take();if(requested!=null)Program.PendingChatRoom=requested;ShowMain();}if(!verify&&ready&&Program.PendingChatRoom!=null&&service.Friends.ChatUser!=""){string requested=Program.PendingChatRoom;Program.PendingChatRoom=null;await service.Friends.Chat.Open(requested);}service.Tick();if(overlay!=null)overlay.Tick();await Task.WhenAll(service.Genshin.Tick(),service.Eternal.Tick(),service.Riot.League.Tick(),service.Riot.Valorant.Tick(),service.Friends.Tick(service.Games,Visible&&WindowState!=FormWindowState.Minimized),service.Friends.Chat.Tick(Visible&&WindowState!=FormWindowState.Minimized&&ContainsFocus));if((Visible&&WindowState!=FormWindowState.Minimized)||(overlay!=null&&overlay.IsShowing)){Send();if(!sampling&&DateTime.UtcNow>=sampleDue){sampling=true;sampleDue=DateTime.UtcNow.AddSeconds(10);try{await service.Sample();Send();if(overlay!=null)overlay.Render();}finally{sampling=false;}}}}catch{Toast("설정을 저장하지 못했어요. 저장 폴더 권한을 확인해 주세요.");}};
+        timer.Tick+=async delegate{try{if(!verify&&Program.OpenRequest!=null&&Program.OpenRequest.WaitOne(0)){var requested=ChatNotifications.Take();if(requested=="friends")Program.OpenFriends=true;else if(requested!=null)Program.PendingChatRoom=requested;ShowMain();if(ready&&Program.OpenFriends){Program.OpenFriends=false;web.CoreWebView2.PostWebMessageAsJson(json.Serialize(new{version=1,type="navigate",page="friends"}));}}if(!verify&&ready&&Program.PendingChatRoom!=null&&service.Friends.ChatUser!=""){string requested=Program.PendingChatRoom;Program.PendingChatRoom=null;await service.Friends.Chat.Open(requested);}service.Tick();if(overlay!=null)overlay.Tick();await Task.WhenAll(service.Genshin.Tick(),service.Eternal.Tick(),service.Riot.League.Tick(),service.Riot.Valorant.Tick(),service.Friends.Tick(service.Games,Visible&&WindowState!=FormWindowState.Minimized),service.Friends.Chat.Tick(Visible&&WindowState!=FormWindowState.Minimized&&ContainsFocus));if((Visible&&WindowState!=FormWindowState.Minimized)||(overlay!=null&&overlay.IsShowing)){Send();if(!sampling&&DateTime.UtcNow>=sampleDue){sampling=true;sampleDue=DateTime.UtcNow.AddSeconds(10);try{await service.Sample();Send();if(overlay!=null)overlay.Render();}finally{sampling=false;}}}}catch{Toast("설정을 저장하지 못했어요. 저장 폴더 권한을 확인해 주세요.");}};
         FormClosed+=delegate{service.Updates.Changed-=UpdateChanged;service.Updates.Dispose();timer.Stop();timer.Dispose();if(hotkey!=null)hotkey.Dispose();if(overlay!=null)overlay.Dispose();if(login!=null&&!login.IsDisposed)login.Close();service.Genshin.Changed-=Send;service.Genshin.Dispose();service.Eternal.Changed-=Send;service.Eternal.Dispose();service.Riot.League.Changed-=Send;service.Riot.League.Dispose();service.Riot.Valorant.Changed-=Send;service.Riot.Valorant.Dispose();service.Friends.Changed-=Send;service.Friends.Dispose();try{service.Save();}catch{}};
         FormClosed+=delegate{if(tray!=null){tray.Visible=false;tray.Dispose();}if(trayMenu!=null)trayMenu.Dispose();if(ownedBrandIcon!=null)ownedBrandIcon.Dispose();};
     }
@@ -140,7 +143,7 @@ sealed class GamingWindow:Form {
         c.DownloadStarting+=delegate(object s,CoreWebView2DownloadStartingEventArgs e){e.Cancel=true;};
         c.PermissionRequested+=delegate(object s,CoreWebView2PermissionRequestedEventArgs e){e.State=CoreWebView2PermissionState.Deny;};
         c.WebMessageReceived+=delegate(object s,CoreWebView2WebMessageReceivedEventArgs e){if(e.Source==Origin)HandleMessage(e.WebMessageAsJson);};
-        if(verify)c.NavigationCompleted+=async delegate(object s,CoreWebView2NavigationCompletedEventArgs e){if(e.IsSuccess)await Verify();};
+        if(verify)c.NavigationCompleted+=async delegate(object s,CoreWebView2NavigationCompletedEventArgs e){if(e.IsSuccess){if(Program.SocialVerify)await VerifySocial();else await Verify();}};
         c.Navigate(Origin);timer.Start();
     }catch(Exception ex){if(verify){Directory.CreateDirectory(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"verification"));File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"verification","error.txt"),ex.ToString());}else MessageBox.Show("WebView2 Runtime과 배포 폴더를 확인해 주세요.\n"+ex.Message);quitting=true;Close();}}
     void Send(){if(ready&&!IsDisposed&&web.CoreWebView2!=null){Text=service.Settings.brand;web.CoreWebView2.PostWebMessageAsJson(json.Serialize(new {version=1,type="snapshot",payload=service.Snapshot()}));}}
@@ -178,7 +181,11 @@ sealed class GamingWindow:Form {
             double opacity;if(double.TryParse(Get(d,"artworkOpacity"),System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out opacity))service.Settings.artworkOpacity=Math.Max(0,Math.Min(1,opacity));
             service.Save();Send();return;
         }
+        if(type=="update.changelog"){service.Updates.ShowChangelog();return;}
+        if(type=="update.changelog.close"){service.Updates.CloseChangelog();return;}
         if(type=="update.later"){service.Updates.Dismiss();return;}
+
+        if(type=="friends.social"){bool value;bool? muted=bool.TryParse(Get(d,"muted"),out value)?(bool?)value:null;service.Friends.SocialOptions(Get(d,"loginNotifications").ToLowerInvariant()=="true",Get(d,"partyState"),Get(d,"partyGame"),Get(d,"friend"),muted);await service.Friends.Tick(service.Games,Visible);return;}
         if(verify)return; // Verification may never launch games, browse, or open file pickers.
         if(type=="update.check"){await service.Updates.Check(true);return;}
         if(type=="update.automatic"){service.Updates.SetAutomatic(Get(d,"enabled").ToLowerInvariant()=="true");return;}

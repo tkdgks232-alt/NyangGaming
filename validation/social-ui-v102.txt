@@ -1,0 +1,14 @@
+default/600: "{\"party\":true,\"weekly\":true,\"badge\":true,\"bells\":4,\"overflow\":false,\"errors\":[]}"
+default/1300: "{\"party\":true,\"weekly\":true,\"badge\":true,\"bells\":4,\"overflow\":false,\"errors\":[]}"
+pink/600: "{\"party\":true,\"weekly\":true,\"badge\":true,\"bells\":4,\"overflow\":false,\"errors\":[]}"
+pink/1300: "{\"party\":true,\"weekly\":true,\"badge\":true,\"bells\":4,\"overflow\":false,\"errors\":[]}"
+party change: True
+notes default/600/1: "{\"title\":\"이번 업데이트에서 달라진 점\",\"notes\":true,\"safe\":true,\"overflow\":false,\"buttons\":1,\"errors\":[]}"
+notes default/600/1.5: "{\"title\":\"이번 업데이트에서 달라진 점\",\"notes\":true,\"safe\":true,\"overflow\":false,\"buttons\":1,\"errors\":[]}"
+notes default/1300/1: "{\"title\":\"이번 업데이트에서 달라진 점\",\"notes\":true,\"safe\":true,\"overflow\":false,\"buttons\":1,\"errors\":[]}"
+notes default/1300/1.5: "{\"title\":\"이번 업데이트에서 달라진 점\",\"notes\":true,\"safe\":true,\"overflow\":false,\"buttons\":1,\"errors\":[]}"
+notes pink/600/1: "{\"title\":\"이번 업데이트에서 달라진 점\",\"notes\":true,\"safe\":true,\"overflow\":false,\"buttons\":1,\"errors\":[]}"
+notes pink/600/1.5: "{\"title\":\"이번 업데이트에서 달라진 점\",\"notes\":true,\"safe\":true,\"overflow\":false,\"buttons\":1,\"errors\":[]}"
+notes pink/1300/1: "{\"title\":\"이번 업데이트에서 달라진 점\",\"notes\":true,\"safe\":true,\"overflow\":false,\"buttons\":1,\"errors\":[]}"
+notes pink/1300/1.5: "{\"title\":\"이번 업데이트에서 달라진 점\",\"notes\":true,\"safe\":true,\"overflow\":false,\"buttons\":1,\"errors\":[]}"
+notes closed: True

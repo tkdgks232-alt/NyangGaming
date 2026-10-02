@@ -2,6 +2,7 @@
 
 internal sealed class UpdateView {
  public string currentVersion=UpdateBuild.Version,newVersion,notes="",state="idle",message="업데이트를 확인할 수 있어요.";
+ public string installedNotes="";public bool changelogDialog;
  public bool automatic=true,busy,dialog,installed;public int progress;
 }
 internal sealed class UpdatePreferences {public bool automatic=true;}
@@ -20,10 +21,12 @@ internal sealed class VeloUpdateBackend:IAppUpdateBackend {
 }
 internal sealed class AppUpdateService:IDisposable {
  internal UpdateView View=new UpdateView();internal event Action Changed;
- readonly string prefs;readonly IAppUpdateBackend backend;readonly CancellationTokenSource lifetime=new CancellationTokenSource();
+ readonly string prefs,seenFile;readonly IAppUpdateBackend backend;readonly CancellationTokenSource lifetime=new CancellationTokenSource();
  readonly JavaScriptSerializer json=new JavaScriptSerializer();UpdateInfo available;VelopackAsset downloaded;bool disposed,started;
  internal static bool ValidRepository(string value){return Regex.IsMatch(value??"",@"^https://github\.com/[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9_.-]+$")&&!value.EndsWith("/.")&&!value.EndsWith("/..");}
  internal AppUpdateService(string root,bool verify=false,IAppUpdateBackend injected=null){
+  seenFile=Path.Combine(root,"release-notes-seen.txt");
+  try{View.installedNotes=File.ReadAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"release-notes.md"));if(View.installedNotes.Length>16000)View.installedNotes=View.installedNotes.Substring(0,16000);}catch{}
   prefs=Path.Combine(root,"update-preferences.json");try{var saved=json.Deserialize<UpdatePreferences>(File.ReadAllText(prefs));if(saved!=null)View.automatic=saved.automatic;}catch{}
   if(verify&&injected==null){View.message="업데이트 화면 검증 모드";return;}
   try{backend=injected??(UpdateBuild.Testing?new VeloUpdateBackend(UpdateBuild.TestSource,true):ValidRepository(UpdateBuild.Repository)?new VeloUpdateBackend(UpdateBuild.Repository):null);
@@ -34,7 +37,7 @@ internal sealed class AppUpdateService:IDisposable {
  }
  void Notify(){if(!disposed&&Changed!=null)Changed();}
  internal void SetAutomatic(bool enabled){Directory.CreateDirectory(Path.GetDirectoryName(prefs));LeagueJson.AtomicBytes(prefs,Encoding.UTF8.GetBytes(json.Serialize(new UpdatePreferences{automatic=enabled})));View.automatic=enabled;Notify();}
- internal async Task Startup(){if(started||disposed)return;started=true;if(View.automatic){await Task.Delay(1800,lifetime.Token);if(!disposed)await Check(false);}}
+ internal async Task Startup(){if(started||disposed)return;started=true;if(View.installed&&!string.IsNullOrWhiteSpace(View.installedNotes)){string seen="";try{seen=File.ReadAllText(seenFile);}catch{}if(ShouldShowChangelog(seen,View.currentVersion)){View.changelogDialog=true;Notify();}}if(View.automatic){await Task.Delay(1800,lifetime.Token);if(!disposed)await Check(false);}}
  void SetRelease(VelopackAsset asset){View.newVersion=asset.Version.ToString();var text=asset.NotesMarkdown??"";View.notes=text.Length>16000?text.Substring(0,16000)+"…":text;}
  internal async Task Check(bool manual){
   if(disposed||View.busy)return;if(backend==null||!View.installed){if(manual)View.dialog=true;Notify();return;}
@@ -52,6 +55,9 @@ internal sealed class AppUpdateService:IDisposable {
   catch{if(!disposed){View.state="downloadError";View.message="다운로드 또는 파일 검증에 실패했어요. 현재 버전과 사용자 데이터는 유지됩니다. 다시 시도할 수 있어요.";}}
   finally{View.busy=false;Notify();}
  }
+ internal static bool ShouldShowChangelog(string seen,string current){return !string.Equals((seen??"").Trim(),current,StringComparison.Ordinal);}
+ internal void ShowChangelog(){if(string.IsNullOrWhiteSpace(View.installedNotes))return;View.changelogDialog=true;Notify();}
+ internal void CloseChangelog(){try{Directory.CreateDirectory(Path.GetDirectoryName(seenFile));LeagueJson.AtomicBytes(seenFile,Encoding.UTF8.GetBytes(View.currentVersion));}catch{}View.changelogDialog=false;Notify();}
  internal void Dismiss(){if(View.state=="applying")return;View.dialog=false;Notify();}
  internal bool BeginApply(){if(disposed||View.busy||downloaded==null||View.state!="ready")return false;try{View.state="applying";View.busy=true;View.message="프로그램을 종료한 뒤 업데이트하고 다시 실행해요.";Notify();backend.Apply(downloaded);return true;}catch{View.busy=false;View.state="ready";View.message="업데이트 실행에 실패했어요. 현재 버전은 계속 사용할 수 있어요. 다시 시도해 주세요.";Notify();return false;}}
  internal void ApplyPreparationFailed(){View.message="설정 저장을 완료하지 못해 업데이트를 중단했어요. 현재 버전을 계속 사용할 수 있어요.";View.dialog=true;Notify();}

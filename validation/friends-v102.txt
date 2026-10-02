@@ -1,0 +1,29 @@
+PASS history private by default
+PASS session whitelist, running filter and deduplication
+PASS default 10-minute idle
+PASS before idle threshold
+PASS 10-minute idle threshold
+PASS new input restores online
+PASS gaming beats idle genshin
+PASS gaming beats idle eternal
+PASS gaming beats idle league
+PASS gaming beats idle valorant
+PASS game exit restores away
+PASS game exit restores online
+PASS non-game excluded Chrome
+PASS non-game excluded Discord
+PASS non-game excluded KakaoTalk
+PASS non-game excluded secret-file.txt
+PASS sharing off removes game
+PASS offline overrides all
+PASS auto-away off
+PASS only allowlisted presence fields serialized
+PASS project configuration accepted
+PASS unsafe backend URL rejected
+PASS unsafe backend URL rejected
+PASS unsafe backend URL rejected
+PASS unsafe backend URL rejected
+PASS unsafe backend URL rejected
+PASS privileged key rejected
+PASS presence settings preserve independent history sharing
+PASS history settings preserve presence settings

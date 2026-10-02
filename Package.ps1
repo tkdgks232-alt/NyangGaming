@@ -7,7 +7,7 @@ if(!$OutputDir){$OutputDir=Join-Path $PSScriptRoot 'Releases'}
 & (Join-Path $PSScriptRoot 'Build.ps1') -ExecutableName 'NyangGaming.exe' -Version $Version -Repository $Repository -UpdateTest:$UpdateTest -TestSource $TestSource
 $stage=Join-Path $PSScriptRoot ('.packages/stage-'+[guid]::NewGuid().ToString('N'));New-Item -ItemType Directory $stage -Force | Out-Null
 # Explicit runtime allowlist: never copy UserData, DPAPI keys, development fixtures or SQL/test outputs.
-foreach($file in @('NyangGaming.exe','NyangGaming.exe.config','Velopack.dll','Newtonsoft.Json.dll','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll','WebView2Loader.dll','friends-backend.json')){
+foreach($file in @('NyangGaming.exe','release-notes.md','NyangGaming.exe.config','Velopack.dll','Newtonsoft.Json.dll','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll','WebView2Loader.dll','friends-backend.json')){
  Copy-Item -LiteralPath (Join-Path $PSScriptRoot ('dist/'+$file)) -Destination (Join-Path $stage $file)
 }
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'dist/ui') -Destination $stage -Recurse

@@ -1,0 +1,14 @@
+PASS migration repeatable
+PASS accepted friend sees party
+PASS nonfriend cannot read party
+PASS direct private table access denied
+PASS appear offline hides party even before next pulse
+PASS away clears game
+PASS party expires after abnormal exit
+PASS invalid party rejected
+PASS anonymous callers denied
+PASS empty history zero not NaN
+PASS Sunday portion counted in previous week
+PASS Monday portion and own-account isolation
+PASS unfriending immediately revokes party
+ALL PASS: 13

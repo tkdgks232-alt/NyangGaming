@@ -1,0 +1,14 @@
+PASS startup never floods existing online friends
+PASS offline to gaming alerts once
+PASS online status changes do not alert
+PASS rapid reconnect cooldown
+PASS per friend mute
+PASS global notifications off
+PASS network failure recovery baseline
+PASS sleep gap is not friend arrival
+PASS newly accepted friend not arrival
+PASS party whitelist
+PASS presence updates preserve independent social settings
+PASS away removes game and unmute persists
+PASS release notes once per version and first install
+ALL PASS: 13

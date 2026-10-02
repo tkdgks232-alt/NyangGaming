@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -18,7 +18,7 @@ internal sealed class FriendsSession {public string access_token,refresh_token;p
 internal sealed class FriendsView {
     public bool configured,connected,busy,stale;
     public string message="친구 서비스 초기 설정이 필요해요.",localStatus="offline",gameId,gameStartedAt,lastUpdated;
-    public FriendsOptions options=new FriendsOptions();
+    public FriendsOptions options=new FriendsOptions();public SocialView social=new SocialView();
     public object me;
     public object[] friends=new object[0],requests=new object[0];
     public object[] messages=new object[0];public string chatUser,sentId;
@@ -39,7 +39,7 @@ internal static class FriendPresence {
         return new PresencePayload{p_status=options.autoAway&&idle>=options.awayMinutes*60?"away":"online"};
     }
 }
-internal sealed class FriendsService:IDisposable {
+internal sealed partial class FriendsService:IDisposable {
     internal readonly MessengerService Chat;
     readonly System.Threading.SemaphoreSlim authLock=new System.Threading.SemaphoreSlim(1,1);
     internal string ChatUser {get{return ErJson.Text(View.me,"id");}}
@@ -85,7 +85,7 @@ internal sealed class FriendsService:IDisposable {
         await Run(async()=>{await Authenticate();await Rpc("nyang_send",new{p_user=id.ToString(),p_body=body,p_id=nonce.ToString()});View.sentId=messageId;await LoadChat();View.message="메시지를 보냈어요.";});
     }
     async Task LoadChat(){if(View.chatUser==null)return;string selected=View.chatUser;var result=await Rpc("nyang_messages",new{p_user=selected});if(selected==View.chatUser)View.messages=ErJson.Rows(result).Cast<object>().ToArray();chatDue=DateTime.UtcNow.AddSeconds(5);}
-    internal FriendsService(string folder,bool test){root=folder;verify=test;Chat=new MessengerService(this,folder,test);if(test)return;
+    internal FriendsService(string folder,bool test){root=folder;verify=test;Chat=new MessengerService(this,folder,test);if(test)return;LoadSocial();
         try{string saved=Path.Combine(root,"friends-config.json");config=json.Deserialize<FriendsConfig>(File.ReadAllText(File.Exists(saved)?saved:Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"friends-backend.json")));if(!ValidConfig(config.url,config.key))config=null;}catch{}
         try{View.options=json.Deserialize<FriendsOptions>(File.ReadAllText(Path.Combine(root,"friends-options.json")))??new FriendsOptions();View.options.awayMinutes=Math.Max(1,Math.Min(240,View.options.awayMinutes));}catch{}
         try{session=json.Deserialize<FriendsSession>(Encoding.UTF8.GetString(ProtectedData.Unprotect(File.ReadAllBytes(Path.Combine(root,"friends-session.dpapi")),null,DataProtectionScope.CurrentUser)));}catch{}
@@ -157,7 +157,7 @@ internal sealed class FriendsService:IDisposable {
         }
     }
     Task<object> Rpc(string method,object data){return Post("rest/v1/rpc/"+method,data,true);}
-    async Task Snapshot(){var result=await Rpc("nyang_snapshot",new{});View.me=ErJson.Get(result,"me");View.friends=ErJson.Rows(ErJson.Get(result,"friends")).Cast<object>().ToArray();View.requests=ErJson.Rows(ErJson.Get(result,"requests")).Cast<object>().ToArray();View.lastUpdated=DateTime.UtcNow.ToString("o");if(View.chatUser!=null&&!View.friends.Any(f=>ErJson.Text(f,"id")==View.chatUser)){View.chatUser=null;View.messages=new object[0];}if(pageVisible)await LoadChat();}
+    async Task Snapshot(){var result=await Rpc("nyang_snapshot",new{});View.me=ErJson.Get(result,"me");View.friends=ErJson.Rows(ErJson.Get(result,"friends")).Cast<object>().ToArray();View.requests=ErJson.Rows(ErJson.Get(result,"requests")).Cast<object>().ToArray();ObserveArrivals();await SyncSocial();View.lastUpdated=DateTime.UtcNow.ToString("o");if(View.chatUser!=null&&!View.friends.Any(f=>ErJson.Text(f,"id")==View.chatUser)){View.chatUser=null;View.messages=new object[0];}if(pageVisible)await LoadChat();}
     internal async Task Offline(){if(verify||config==null||session==null||disposed)return;retry=DateTime.MaxValue;for(int i=0;i<20&&busy;i++)await Task.Delay(100);if(busy)return;try{await Task.WhenAny(Task.WhenAll(Rpc("nyang_heartbeat",new PresencePayload{p_status="offline"}),Rpc("nyang_session_pulse",new{p_games=new string[0]})),Task.Delay(2000));}catch{}}
     public void Dispose(){disposed=true;Chat.Dispose();http.Dispose();}
 }

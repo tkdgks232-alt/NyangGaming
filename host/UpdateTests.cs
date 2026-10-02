@@ -17,6 +17,9 @@ internal static class UpdateTests {
   f=new Fake{current=true};using(var s=new AppUpdateService(root,false,f)){await s.Check(true);check(s.View.state=="current"&&s.View.message.Contains(UpdateBuild.Version),"latest version message");}
   f=new Fake{installed=false};using(var s=new AppUpdateService(root,false,f)){await s.Check(true);check(s.View.state=="portable"&&f.checks==0,"ZIP build does not try to replace running files");}
   using(var db=new LeagueRankStore(Path.Combine(root,"migration.sqlite"))){var identity=new LeagueIdentity{puuid="update-test",platform="KR"};var data=new LeagueData{ranks=new[]{new LeagueRank{queue="RANKED_SOLO_5x5",tier="GOLD",division="I",points=55}}};db.Append(identity,data,DateTime.UtcNow);bool failed=false;try{db.Migrate(2,delegate{throw new IOException("migration failure");});}catch{failed=true;}check(failed&&db.SchemaVersion==1&&db.Read(identity).Length==1,"failed migration rolls back and preserves existing rows");check(Directory.GetFiles(root,"*.bak").Length>=2,"versioned SQLite backups retained");}
+  string notesRoot=Path.Combine(root,"notes");Directory.CreateDirectory(notesRoot);var notesBackend=new Fake{current=true};
+  using(var s=new AppUpdateService(notesRoot,false,notesBackend)){s.View.installedNotes="Local release notes";s.SetAutomatic(false);await s.Startup();check(s.View.changelogDialog&&notesBackend.checks==0,"post-update notes show offline with auto-check disabled");s.CloseChangelog();check(!s.View.changelogDialog,"explicit close acknowledges notes");}
+  using(var s=new AppUpdateService(notesRoot,false,notesBackend)){s.View.installedNotes="Local release notes";await s.Startup();check(!s.View.changelogDialog,"acknowledged notes do not reappear after restart");s.ShowChangelog();check(s.View.changelogDialog,"settings can reopen notes");}
   log.Add("ALL PASS: "+log.Count);
  }catch(Exception e){log.Add("FAIL "+e);}File.WriteAllLines(output,log,Encoding.UTF8);}
 }

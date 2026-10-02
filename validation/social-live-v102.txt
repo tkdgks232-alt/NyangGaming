@@ -1,0 +1,9 @@
+PASS existing isolated test accounts only
+PASS production social RPCs connected
+PASS party transmitted between existing accounts
+PASS production weekly summary returned
+PASS production offline setting hides party
+PASS production snapshot emits one friend arrival
+PASS repeat snapshot does not repeat alert
+PASS game sharing off removes party game
+ALL PASS: 8

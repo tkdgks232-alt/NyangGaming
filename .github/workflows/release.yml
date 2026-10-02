@@ -49,6 +49,14 @@ jobs:
           $p=Start-Process ./dist/NyangGaming.exe -ArgumentList @('--update-selftest',('"'+$result+'"')) -Wait -PassThru
           Get-Content $result
           if(!(Select-String -Path $result -Pattern '^ALL PASS:')){throw 'Update tests failed'}
+      - name: Test friend arrivals and party settings
+        shell: pwsh
+        run: |
+          $result=Join-Path $pwd 'social-test-results.txt'
+          Start-Process ./dist/NyangGaming.exe -ArgumentList @('--social-selftest',('"'+$result+'"')) -WindowStyle Hidden -Wait
+          Get-Content $result
+          if(!(Select-String -Path $result -Pattern '^ALL PASS:')){throw 'Social tests failed'}
+          if(!(Test-Path ./dist/release-notes.md)){throw 'Bundled release notes missing'}
       - name: Upload complete release before publishing
         shell: pwsh
         env:
